@@ -1,14 +1,17 @@
-import express from 'express';
+import mongoose from 'mongoose';
+import { config } from './config';
+import app from './app';
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+async function main() {
+  await mongoose.connect(config.mongoUri);
+  console.log('[wallet-service] connected to MongoDB');
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'wallet-service' });
+  app.listen(config.port, () => {
+    console.log(`[wallet-service] listening on port ${config.port}`);
+  });
+}
+
+main().catch((err) => {
+  console.error('[wallet-service] fatal startup error:', err);
+  process.exit(1);
 });
-
-app.listen(PORT, () => {
-  console.log(`[wallet-service] listening on port ${PORT}`);
-});
-
-export default app;
