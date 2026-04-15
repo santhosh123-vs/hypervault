@@ -1,0 +1,117 @@
+version: "3.8"
+
+services:
+  # ── Databases ──
+  mongodb:
+    image: mongo:7
+    container_name: hv-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: hypervault
+      MONGO_INITDB_ROOT_PASSWORD: hypervault_dev
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    image: mysql:8
+    container_name: hv-mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: hypervault_root
+      MYSQL_DATABASE: hypervault
+      MYSQL_USER: hypervault
+      MYSQL_PASSWORD: hypervault_dev
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hv-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass hypervault_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "hypervault_redis", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Services ──
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: hv-api-gateway
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      WALLET_SERVICE_URL: http://wallet-service:3001
+      TRANSACTION_SERVICE_URL: http://transaction-service:3002
+      P2P_SERVICE_URL: http://p2p-sync-service:3003
+      REDIS_URL: redis://:hypervault_redis@redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  wallet-service:
+    build:
+      context: ./services/wallet-service
+      dockerfile: Dockerfile
+    container_name: hv-wallet-service
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://hypervault:hypervault_dev@mongodb:27017/hypervault?authSource=admin
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  transaction-service:
+    build:
+      context: ./services/transaction-service
+      dockerfile: Dockerfile
+    container_name: hv-transaction-service
+    ports:
+      - "3002:3002"
+    env_file:
+      - .env
+    environment:
+      PORT: 3002
+      DATABASE_URL: mysql://hypervault:hypervault_dev@mysql:3306/hypervault
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  p2p-sync-service:
+    build:
+      context: ./services/p2p-sync-service
+      dockerfile: Dockerfile
+    container_name: hv-p2p-sync
+    ports:
+      - "3003:3003"
+    env_file:
+      - .env
+    environment:
+      PORT: 3003
+
+volumes:
+  mongo-data:
+  mysql-data:

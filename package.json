@@ -1,0 +1,28 @@
+{
+  "name": "hypervault",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint services/*/src --ext .ts",
+    "dev:gateway": "npm run dev -w services/api-gateway",
+    "dev:wallet": "npm run dev -w services/wallet-service",
+    "dev:transaction": "npm run dev -w services/transaction-service",
+    "dev:p2p": "npm run dev -w services/p2p-sync-service",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0"
+  }
+}
